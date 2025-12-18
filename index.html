@@ -50,7 +50,7 @@
                             Copiar Todos
                         </button>
                         <button id="download-btn" class="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-xl shadow-lg shadow-pink-200 transition-all font-medium text-sm">
-                            Baixar Lista
+                            Baixar como Excel
                         </button>
                     </div>
                 </div>
@@ -118,32 +118,24 @@
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
                     
-                    // Convert sheet to JSON array
-                    // Header: 1 gets the raw array of arrays
                     const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-                    // Regex for basic email validation
                     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
                     rows.forEach((row, index) => {
-                        // Skip header or empty rows
-                        if (index === 0 && (row[1] === 'Email' || row[1] === 'email')) return;
+                        // Skip header if it matches "Email"
+                        if (index === 0 && row[1] && (row[1].toString().toLowerCase().includes('email'))) return;
                         
-                        // Pick second column (index 1)
                         let email = row[1];
                         
                         if (email) {
-                            // Clean some common artifacts (like the semicolon I saw in your snippet)
                             email = email.toString().replace(/;/g, '').trim();
-                            
-                            // Check if it looks like an email
                             if (emailRegex.test(email)) {
                                 foundEmails.push(email);
                             }
                         }
                     });
 
-                    // Update UI
                     displayResults();
                 } catch (err) {
                     console.error(err);
@@ -188,16 +180,23 @@
             showToast("Tudo copiado com sucesso! 💖");
         };
 
-        // Download functionality
+        // Download as Excel functionality
         downloadBtn.onclick = () => {
-            const text = foundEmails.join('\n');
-            const blob = new Blob([text], { type: 'text/plain' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'lista_de_emails.txt';
-            a.click();
-            window.URL.revokeObjectURL(url);
+            if (foundEmails.length === 0) return;
+
+            // Prepare data for Excel: an array of arrays [[email1], [email2], ...]
+            const dataForExcel = foundEmails.map(email => [email]);
+            
+            // Create a new worksheet
+            const ws = XLSX.utils.aoa_to_sheet([["Emails"], ...dataForExcel]);
+            
+            // Create a new workbook
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Lista de Emails");
+            
+            // Generate and trigger download
+            XLSX.writeFile(wb, 'emails_extraidos.xlsx');
+            showToast("Seu Excel está pronto! 📁✨");
         };
     </script>
 </body>
